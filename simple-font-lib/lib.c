@@ -87,9 +87,7 @@ __declspec(dllexport) int LoadFont(wchar_t* filename)
 	}
 
 	//Array needs to be extended
-	void* mem = realloc(fonts, sizeof(font_t*) * ++capacity);
-	if (fonts == NULL)
-		fonts = mem;
+	fonts = realloc(fonts, sizeof(font_t*) * ++capacity);
 	fonts[capacity - 1] = font;
 	return capacity - 1;
 }
@@ -123,6 +121,7 @@ __declspec(dllexport) void FreeFont(int handle)
 //Included for good practice, in real world cases you can rely on Windows cleaning up
 __declspec(dllexport) void FreeAllResources()
 {
+	//lib.c
 	for (size_t i = 0; i < capacity; i++)
 	{
 		if (fonts[i] != NULL)
@@ -134,6 +133,7 @@ __declspec(dllexport) void FreeAllResources()
 	}
 	free(fonts);
 
+	//installedfonts.h
 	for (size_t i = 0; i < numInstalledFonts; i++)
 	{
 		free(installedFonts[i].name);

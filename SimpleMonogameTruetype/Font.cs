@@ -1,17 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SimpleMonogameTruetype
 {
 	/// <summary>
 	/// A TrueType or OpenType font object.
 	/// </summary>
-    public class Font
+    public unsafe class Font
     {
 		private int handle;
 
@@ -43,7 +38,10 @@ namespace SimpleMonogameTruetype
 		{
 			MeasureBitmap(handle, text, fontSize, out int width, out int height, out int yOffset, maxWidth, lineSpacing);
 			byte[] data = new byte[width * height];
-			GenerateBitmap(handle, data, width);
+			fixed (byte* p = data)
+			{
+				GenerateBitmap(handle, p, width);
+			}
 
 			return new BitmapData(width, height, yOffset, data);
 		}
@@ -97,7 +95,11 @@ namespace SimpleMonogameTruetype
 			if (width < maxWidth)
 				width = maxWidth;
 			byte[] data = new byte[width * height];
-			GenerateBitmap(handle, data, width);
+			fixed (byte* p = data)
+			{
+				GenerateBitmap(handle, p, width);
+			}
+			//GenerateBitmap(handle, data, width);
 
 			return new BitmapData(width, height, yOffset, data);
 		}
@@ -112,21 +114,6 @@ namespace SimpleMonogameTruetype
 		public BitmapData GenerateBitmapDataForceWidth(string text, int fontSize, int maxWidth)
 		{
 			return GenerateBitmapDataForceWidth(text, fontSize, maxWidth, 1.5f);
-		}
-
-		/// <summary>
-		/// Saves <see cref="BitmapData"/> to a file.
-		/// </summary>
-		/// <param name="path">Output file path.</param>
-		/// <param name="bitmapData">Bitmap data to be saved.</param>
-		/// <param name="hexColor">Text color in hexadecimal.</param>
-		public void DrawBitmapDataToFile(string path, BitmapData bitmapData, int hexColor = 0)
-		{
-			Bitmap bitmap = new Bitmap(bitmapData.Width, bitmapData.Height);
-			for (int i = 0; i < bitmapData.Alphas.Length; i++)
-				bitmap.SetPixel(i % bitmapData.Width, i / bitmapData.Width, Color.FromArgb(bitmapData.Alphas[i] << 24 | hexColor));
-
-			bitmap.Save(path);
 		}
 
 		/// <summary>
@@ -153,7 +140,13 @@ namespace SimpleMonogameTruetype
 			out int width, out int height, out int yOffset, int maxWidth, float lineSpacing);
 
 		[DllImport("simple-font-lib.dll", CallingConvention = CallingConvention.Cdecl)]
-		private static extern void GenerateBitmap(int handle, byte[] emptyBitmap, int width);
+		private static extern void GenerateBitmap(int handle, byte* emptyBitmap, int width);
+
+		/// <summary>
+		/// Prints all installed fonts.
+		/// </summary>
+		[DllImport("simple-font-lib.dll", CallingConvention = CallingConvention.Cdecl)]
+		public static extern void PrintInstalledFonts();
 
 		/// <summary>
 		/// Free all unmanaged resources.

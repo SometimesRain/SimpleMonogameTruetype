@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Drawing;
 
 namespace SimpleMonogameTruetype
 {
@@ -74,6 +70,20 @@ namespace SimpleMonogameTruetype
 			}
 
 			return pixels;
+		}
+
+		/// <summary>
+		/// Saves bitmap data to a file.
+		/// </summary>
+		/// <param name="path">Output file path.</param>
+		/// <param name="hexColor">Text color in hexadecimal.</param>
+		public void SaveToFile(string path, int hexColor = 0)
+		{
+			Bitmap bitmap = new Bitmap(Width, Height);
+			for (int i = 0; i < Alphas.Length; i++)
+				bitmap.SetPixel(i % Width, i / Width, Color.FromArgb(Alphas[i] << 24 | hexColor));
+
+			bitmap.Save(path);
 		}
 	}
 }

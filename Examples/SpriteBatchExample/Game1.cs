@@ -43,12 +43,14 @@ namespace SimpleMonogameTruetype.Example
 
 			//Set texture data
 			fontTexture.SetData(data.Alphas);
+
+			JapaneseExample();
 		}
 
 		protected override void UnloadContent()
 		{
-			if (fontTexture != null)
-				fontTexture.Dispose();
+			fontTexture?.Dispose();
+			unicode?.Dispose();
 
 			//Free all unmanaged resources
 			Font.FreeAllResources();
@@ -71,9 +73,21 @@ namespace SimpleMonogameTruetype.Example
 			//  If you want to change the color of the text you need to write your own pixel shader
 			spriteBatch.Begin();
 			spriteBatch.Draw(fontTexture, new Vector2(100, 100), new Color(0, 0, 0, 255));
+
+			spriteBatch.Draw(unicode, new Vector2(150, 400), new Color(0, 0, 0, 255));
 			spriteBatch.End();
 
 			base.Draw(gameTime);
+		}
+
+		Texture2D unicode;
+		private void JapaneseExample()
+		{
+			Font yuMincho = new Font("Yu Mincho Demibold");
+
+			BitmapData data = yuMincho.GenerateBitmapData("Unicodeサポート含まれて!", 36);
+			unicode = new Texture2D(GraphicsDevice, data.Width, data.Height, false, SurfaceFormat.Alpha8);
+			unicode.SetData(data.Alphas);
 		}
 	}
 }

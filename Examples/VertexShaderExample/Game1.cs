@@ -47,7 +47,7 @@ namespace SimpleMonogameTruetype.Example
 		{
 			int width = Window.ClientBounds.Width;
 			int height = Window.ClientBounds.Height;
-			
+
 			if (width == 0 || height == 0)
 				return;
 

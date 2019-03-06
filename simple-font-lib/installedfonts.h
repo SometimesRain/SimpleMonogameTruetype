@@ -1,11 +1,9 @@
 #ifndef INSTALLEDFONTS_H
 #define INSTALLEDFONTS_H
-#ifdef _WIN32
 
 #include "levenshtein.h"
 
 #include <stdlib.h>
-#include <Windows.h>
 
 typedef struct {
 	wchar_t* name;
@@ -14,6 +12,9 @@ typedef struct {
 
 installedfont_t* installedFonts = NULL;
 size_t numInstalledFonts;
+
+#ifdef _WIN32
+#include <Windows.h>
 
 //Loop through all font registry keys and collect truetype fonts to installedFonts array
 int LoadInstalledFonts()
@@ -80,6 +81,16 @@ int LoadInstalledFonts()
 	return ERROR_SUCCESS;
 }
 
+#else
+
+//No implementation for non-Windows operating systems
+void LoadInstalledFonts()
+{
+
+}
+
+#endif
+
 installedfont_t* GetFontByName(const wchar_t* name)
 {
 	//Load installed fonts only once
@@ -109,18 +120,45 @@ installedfont_t* GetFontByName(const wchar_t* name)
 	return font;
 }
 
-#else
-
-//No implementation for non-Windows operating systems
-void LoadInstalledFonts()
+__declspec(dllexport) void PrintInstalledFonts()
 {
+	//Load installed fonts only once
+	if (installedFonts == NULL)
+		if (LoadInstalledFonts() != ERROR_SUCCESS)
+			return NULL;
 
+	for (size_t i = 0; i < numInstalledFonts; i++)
+		wprintf(L"%s (%s)\n", installedFonts[i].name, installedFonts[i].filename);
 }
 
-installedfont_t* GetFontByName(const wchar_t* name)
+/*__declspec(dllexport) wchar_t** GetNClosestMatches(const wchar_t* name, size_t n)
 {
-	return NULL;
-}
+	//Load installed fonts only once
+	if (installedFonts == NULL)
+		if (LoadInstalledFonts() != ERROR_SUCCESS)
+			return NULL;
 
-#endif
+	wchar_t** matches = realloc(matches, sizeof(wchar_t*) * n);
+	size_t* minDistance = malloc(sizeof(size_t*) * n);
+	memset(minDistance, SIZE_MAX, sizeof(size_t*) * n);
+
+	//Find font with lowest levenshtein distance to parameter name
+	for (size_t i = 0; i < numInstalledFonts; i++)
+	{
+		size_t distance = levenshtein(name, installedFonts[i].name);
+
+		for (size_t j = 0; j < n; j++)
+		{
+			if (distance < minDistance[j])
+			{
+				matches[j] = installedFonts[i].name;
+				minDistance[j] = distance;
+				break;
+			}
+		}
+	}
+
+	return matches;
+}*/
+
 #endif
