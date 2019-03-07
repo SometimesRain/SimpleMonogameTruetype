@@ -125,6 +125,7 @@
     <ClInclude Include="installedfonts.h" />
     <ClInclude Include="levenshtein.h" />
     <ClInclude Include="stb_truetype.h" />
+    <ClInclude Include="wcsutil.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -12,6 +12,7 @@ typedef struct
 {
 	stbtt_fontinfo info;
 	wchar_t* filename;
+	int fontIndex;
 	int ascent;
 	int descent;
 	int lineGap;
@@ -35,64 +36,94 @@ enum
 
 //------------------------------ LOADING AND FREEING ------------------------------
 font_t** fonts = NULL;
-size_t capacity = 0;
+size_t numFonts = 0;
+wchar_t* lastFontName = NULL;
+
+wchar_t* GetFontName(stbtt_fontinfo* info)
+{
+	int length;
+	unsigned char* fontNameStr = stbtt_GetFontNameString(info, &length, STBTT_PLATFORM_ID_MICROSOFT, STBTT_MS_EID_UNICODE_BMP, STBTT_MS_LANG_ENGLISH, 4);
+
+	//Swap endianness
+	for (int i = 0; i < length / sizeof(wchar_t); i++)
+	{
+		unsigned char* temp = fontNameStr[i * 2];
+		fontNameStr[i * 2] = fontNameStr[i * 2 + 1];
+		fontNameStr[i * 2 + 1] = temp;
+	}
+
+	lastFontName = memcpy(realloc(lastFontName, length + sizeof(wchar_t)), fontNameStr, length);
+	lastFontName[length / sizeof(wchar_t)] = 0;
+
+	return lastFontName;
+}
 
 //Returns a handle to the loaded font
-__declspec(dllexport) int LoadFont(wchar_t* filename)
+__declspec(dllexport) int LoadFont(wchar_t* filename, int index, wchar_t** actualName)
 {
 	//Check if font is already loaded
-	for (size_t i = 0; i < capacity; i++)
-		if (fonts[i] != NULL && wcscmp(fonts[i]->filename, filename) == 0)
-			return i;
+	unsigned char* fontBuffer = NULL;
+	for (size_t i = 0; i < numFonts; i++)
+	{
+		if (wcscmp(fonts[i]->filename, filename) == 0)
+		{
+			if (fonts[i]->fontIndex == index)
+			{
+				if (*actualName == NULL)
+					*actualName = GetFontName(&fonts[i]->info);
+				return i;
+			}
+			else
+			{
+				fontBuffer = fonts[i]->info.data;
+			}
+		}
+	}
 
-	//Open for reading
-	FILE* fontFile = _wfopen(filename, L"rb");
-	if (fontFile == NULL)
-		return FILE_NOT_FOUND;
+	if (fontBuffer == NULL)
+	{
+		//Open for reading
+		FILE* fontFile = _wfopen(filename, L"rb");
+		if (fontFile == NULL)
+			return FILE_NOT_FOUND;
 
-	//Get length
-	fseek(fontFile, 0, SEEK_END);
-	size_t size = ftell(fontFile);
-	fseek(fontFile, 0, SEEK_SET);
+		//Get length
+		fseek(fontFile, 0, SEEK_END);
+		size_t size = ftell(fontFile);
+		fseek(fontFile, 0, SEEK_SET);
 
-	//Allocate, read and close
-	unsigned char* fontBuffer = malloc(size);
-	fread(fontBuffer, size, 1, fontFile);
-	fclose(fontFile);
+		//Allocate, read and close
+		fontBuffer = malloc(size);
+		fread(fontBuffer, size, 1, fontFile);
+		fclose(fontFile);
+	}
 
 	//Initialize font
 	font_t* font = malloc(sizeof(font_t));
-	if (!stbtt_InitFont(&font->info, fontBuffer, 0))
+	font->fontIndex = index;
+	int fontOffset = stbtt_GetFontOffsetForIndex(fontBuffer, index);
+	if (!stbtt_InitFont(&font->info, fontBuffer, fontOffset))
 	{
 		//Invalid font
 		free(font);
+		free(fontBuffer);
 		return INVALID_FONT;
 	}
 
 	//Get vertical metrics and set filename
 	stbtt_GetFontVMetrics(&font->info, &font->ascent, &font->descent, &font->lineGap);
-	size = sizeof(wchar_t) * (wcslen(filename) + 1);
-	font->filename = malloc(size);
-	memcpy(font->filename, filename, size);
-
-	//Add font to fonts
-	//First see if there are free slots on the array as it is (marked NULL, left by freed fonts)
-	for (size_t i = 0; i < capacity; i++)
-	{
-		if (fonts[i] == NULL)
-		{
-			fonts[i] = font;
-			return i;
-		}
-	}
+	size_t size = sizeof(wchar_t) * (wcslen(filename) + 1);
+	font->filename = memcpy(malloc(size), filename, size);
 
 	//Array needs to be extended
-	fonts = realloc(fonts, sizeof(font_t*) * ++capacity);
-	fonts[capacity - 1] = font;
-	return capacity - 1;
+	fonts = realloc(fonts, sizeof(font_t*) * ++numFonts);
+	fonts[numFonts - 1] = font;
+	if (*actualName == NULL)
+		*actualName = GetFontName(&font->info);
+	return numFonts - 1;
 }
 
-__declspec(dllexport) int LoadFontByName(wchar_t* fontname)
+__declspec(dllexport) int LoadFontByName(wchar_t* fontname, wchar_t** actualName)
 {
 	//Use winapi to find the correct font file
 	installedfont_t* font = GetFontByName(fontname);
@@ -105,41 +136,36 @@ __declspec(dllexport) int LoadFontByName(wchar_t* fontname)
 	wcscat(path, L"\\Fonts\\");
 	wcscat(path, font->filename);
 
-	return LoadFont(path);
+	*actualName = font->name;
+
+	return LoadFont(path, font->fontIndex, actualName);
 }
 
-//Don't call this to take advantage of caching
-__declspec(dllexport) void FreeFont(int handle)
-{
-	//Free memory and erase the pointer
-	free(fonts[handle]->info.data);
-	free(fonts[handle]->filename);
-	free(fonts[handle]);
-	fonts[handle] = NULL;
-}
-
-//Included for good practice, in real world cases you can rely on Windows cleaning up
 __declspec(dllexport) void FreeAllResources()
 {
 	//lib.c
-	for (size_t i = 0; i < capacity; i++)
+	for (size_t i = 0; i < numFonts; i++)
 	{
-		if (fonts[i] != NULL)
-		{
-			free(fonts[i]->info.data);
-			free(fonts[i]->filename);
-			free(fonts[i]);
-		}
+		//fonts[i]->info.data may be used by multiple so make sure not to free it twice
+		for (size_t j = i; j < numFonts; j++)
+			if (fonts[i]->info.data == fonts[j]->info.data)
+				break;
+			else if (j == numFonts - 1)
+				free(fonts[i]->info.data);
+
+		free(fonts[i]->filename);
+		free(fonts[i]);
 	}
 	free(fonts);
+	free(lastFontName);
 
 	//installedfonts.h
-	for (size_t i = 0; i < numInstalledFonts; i++)
+	for (size_t i = 0; i < numInstFonts; i++)
 	{
-		free(installedFonts[i].name);
-		free(installedFonts[i].filename);
+		free(instFonts[i].name);
+		free(instFonts[i].filename);
 	}
-	free(installedFonts);
+	free(instFonts);
 }
 
 //------------------------------- GENERATING BITMAP -------------------------------

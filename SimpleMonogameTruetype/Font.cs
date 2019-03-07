@@ -11,19 +11,50 @@ namespace SimpleMonogameTruetype
 		private int handle;
 
 		/// <summary>
+		/// Name of the font. If the font was loaded by name (which gives the closest match), this can be used to verify the correct font was loaded.
+		/// </summary>
+		public string Name
+		{
+			get; private set;
+		}
+
+		/// <summary>
 		/// Creates a TrueType or OpenType font.
 		/// </summary>
 		/// <param name="font">Path to the font file, or name of an installed font.</param>
 		public Font(string font)
 		{
+			IntPtr actualName;
 			if (font.Substring(font.Length - 4, 4) == ".ttf" || font.Substring(font.Length - 4, 4) == ".otf")
-				handle = LoadFont(font);
+				handle = LoadFont(font, 0, out actualName);
 			else
-				handle = LoadFontByName(font);
+				handle = LoadFontByName(font, out actualName);
 
 			if (handle == -1) throw new Exception("File not found");
 			if (handle == -2) throw new Exception(font + " is not a valid font");
 			if (handle == -3) throw new NotImplementedException("Installed fonts can only be accessed on Windows");
+
+			Name = Marshal.PtrToStringUni(actualName);
+		}
+
+		/// <summary>
+		/// Creates a TrueType or OpenType font from .ttc/.otc font collection file.
+		/// </summary>
+		/// <param name="path">Path to the font collection file.</param>
+		/// <param name="index">Index of font in the collection.</param>
+		public Font(string path, int index)
+		{
+			IntPtr actualName;
+			if (path.Substring(path.Length - 4, 4) == ".ttc" || path.Substring(path.Length - 4, 4) == ".otc")
+				handle = LoadFont(path, index, out actualName);
+			else
+				throw new Exception("File is not a TrueType or OpenType font collection (.ttc/.otc)");
+
+			if (handle == -1) throw new Exception("File not found");
+			if (handle == -2) throw new Exception(path + " is not a valid font");
+			if (handle == -3) throw new NotImplementedException("Installed fonts can only be accessed on Windows");
+
+			Name = Marshal.PtrToStringUni(actualName);
 		}
 
 		/// <summary>
@@ -127,13 +158,10 @@ namespace SimpleMonogameTruetype
 		}
 
 		[DllImport("simple-font-lib.dll", CallingConvention = CallingConvention.Cdecl)]
-		private static extern int LoadFont([MarshalAs(UnmanagedType.LPWStr)]string filename);
+		private static extern int LoadFont([MarshalAs(UnmanagedType.LPWStr)]string filename, int index, out IntPtr actualName);
 
 		[DllImport("simple-font-lib.dll", CallingConvention = CallingConvention.Cdecl)]
-		private static extern int LoadFontByName([MarshalAs(UnmanagedType.LPWStr)]string fontname);
-
-		[DllImport("simple-font-lib.dll", CallingConvention = CallingConvention.Cdecl)]
-		private static extern void FreeFont(int handle);
+		private static extern int LoadFontByName([MarshalAs(UnmanagedType.LPWStr)]string fontname, out IntPtr actualName);
 
 		[DllImport("simple-font-lib.dll", CallingConvention = CallingConvention.Cdecl)]
 		private static extern void MeasureBitmap(int handle, [MarshalAs(UnmanagedType.LPWStr)]string text, int fontSize,

@@ -7,5 +7,6 @@
     <ClInclude Include="stb_truetype.h" />
     <ClInclude Include="levenshtein.h" />
     <ClInclude Include="installedfonts.h" />
+    <ClInclude Include="wcsutil.h" />
   </ItemGroup>
 </Project>

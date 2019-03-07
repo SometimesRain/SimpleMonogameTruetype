@@ -2,21 +2,23 @@
 #define INSTALLEDFONTS_H
 
 #include "levenshtein.h"
+#include "wcsutil.h"
 
 #include <stdlib.h>
 
 typedef struct {
 	wchar_t* name;
+	int fontIndex;
 	wchar_t* filename;
 } installedfont_t;
 
-installedfont_t* installedFonts = NULL;
-size_t numInstalledFonts;
+installedfont_t* instFonts = NULL;
+size_t numInstFonts;
 
 #ifdef _WIN32
 #include <Windows.h>
 
-//Loop through all font registry keys and collect truetype fonts to installedFonts array
+//Loop through all font registry keys and collect truetype fonts to instFonts array
 int LoadInstalledFonts()
 {
 	HKEY hKey;
@@ -34,8 +36,9 @@ int LoadInstalledFonts()
 	if (status != ERROR_SUCCESS)
 		return status;
 
-	//Some of the values need to be discarded so the array will be larger than needed (later fixed with a realloc)
-	installedFonts = malloc(sizeof(installedfont_t) * numValues);
+	//Guess the size of the array (later fixed with a realloc)
+	size_t allocSize = 512;
+	instFonts = malloc(sizeof(installedfont_t) * allocSize);
 
 	//Allocate memory according to the max values returned from query
 	LPWSTR valueName = malloc(sizeof(wchar_t) * maxNameLen);
@@ -53,28 +56,49 @@ int LoadInstalledFonts()
 		//Discard raster and vector fonts
 		if (wcscmp(valueName + nameLen - 11, L" (TrueType)") == 0)
 		{
-			//stb_truetype doesn't support TTC
-			if (wcscmp(data + (dataLen / 2 - 5), L".ttc") == 0) continue;
-
 			//Discard " (TrueType)" suffix
-			valueName[nameLen - 11] = 0;
+			nameLen -= 10;
+			valueName[nameLen - 1] = 0;
 
-			//Add font
-			size_t nameShortLen = sizeof(wchar_t) * (nameLen - 10);
-			installedFonts[numInstalledFonts].name = malloc(nameShortLen);
-			memcpy(installedFonts[numInstalledFonts].name, valueName, nameShortLen);
+			if (wcscmp(data + (dataLen / 2 - 5), L".ttc") == 0)
+			{
+				wchar_t* pos;
+				wchar_t* token = wcstok_full_delimit(valueName, L" & ", &pos);
+				int i = 0;
+				while (token != NULL)
+				{
+					//Add font
+					size_t tokenSize = (wcslen(token) + 1) * sizeof(wchar_t);
+					instFonts[numInstFonts].name = memcpy(malloc(tokenSize), token, tokenSize);
+					instFonts[numInstFonts].filename = memcpy(malloc(dataLen), data, dataLen);
+					instFonts[numInstFonts].fontIndex = i;
 
-			installedFonts[numInstalledFonts].filename = malloc(dataLen);
-			memcpy(installedFonts[numInstalledFonts].filename, data, dataLen);
+					++numInstFonts, ++i;
 
-			++numInstalledFonts;
+					token = wcstok_full_delimit(NULL, L" & ", &pos);
+				}
+			}
+			else
+			{
+				//Add font
+				instFonts[numInstFonts].name = memcpy(malloc(sizeof(wchar_t) * nameLen), valueName, sizeof(wchar_t) * nameLen);
+				instFonts[numInstFonts].filename = memcpy(malloc(dataLen), data, dataLen);
+				instFonts[numInstFonts].fontIndex = 0;
+
+				++numInstFonts;
+			}
+		}
+		if (numInstFonts > allocSize)
+		{
+			allocSize += 512;
+			instFonts = realloc(instFonts, sizeof(installedfont_t) * allocSize);
 		}
 	}
 
 	status = RegCloseKey(hKey);
 
 	//Resize array to exactly the size it needs to be
-	realloc(installedFonts, sizeof(installedfont_t) * numInstalledFonts);
+	instFonts = realloc(instFonts, sizeof(installedfont_t) * numInstFonts);
 	free(valueName);
 	free(data);
 
@@ -94,7 +118,7 @@ void LoadInstalledFonts()
 installedfont_t* GetFontByName(const wchar_t* name)
 {
 	//Load installed fonts only once
-	if (installedFonts == NULL)
+	if (instFonts == NULL)
 		if (LoadInstalledFonts() != ERROR_SUCCESS)
 			return NULL;
 
@@ -102,17 +126,17 @@ installedfont_t* GetFontByName(const wchar_t* name)
 	size_t minDistance = SIZE_MAX;
 
 	//Find font with lowest levenshtein distance to parameter name
-	for (size_t i = 0; i < numInstalledFonts; i++)
+	for (size_t i = 0; i < numInstFonts; i++)
 	{
-		size_t distance = levenshtein(name, installedFonts[i].name);
+		size_t distance = levenshtein(name, instFonts[i].name);
 
 		//Exact match
 		if (distance == 0)
-			return installedFonts + i;
+			return instFonts + i;
 
 		if (distance < minDistance)
 		{
-			font = installedFonts + i;
+			font = instFonts + i;
 			minDistance = distance;
 		}
 	}
@@ -123,18 +147,18 @@ installedfont_t* GetFontByName(const wchar_t* name)
 __declspec(dllexport) void PrintInstalledFonts()
 {
 	//Load installed fonts only once
-	if (installedFonts == NULL)
+	if (instFonts == NULL)
 		if (LoadInstalledFonts() != ERROR_SUCCESS)
 			return NULL;
 
-	for (size_t i = 0; i < numInstalledFonts; i++)
-		wprintf(L"%s (%s)\n", installedFonts[i].name, installedFonts[i].filename);
+	for (size_t i = 0; i < numInstFonts; i++)
+		wprintf(L"%s (%s)\n", instFonts[i].name, instFonts[i].filename);
 }
 
 /*__declspec(dllexport) wchar_t** GetNClosestMatches(const wchar_t* name, size_t n)
 {
 	//Load installed fonts only once
-	if (installedFonts == NULL)
+	if (instFonts == NULL)
 		if (LoadInstalledFonts() != ERROR_SUCCESS)
 			return NULL;
 
@@ -143,15 +167,15 @@ __declspec(dllexport) void PrintInstalledFonts()
 	memset(minDistance, SIZE_MAX, sizeof(size_t*) * n);
 
 	//Find font with lowest levenshtein distance to parameter name
-	for (size_t i = 0; i < numInstalledFonts; i++)
+	for (size_t i = 0; i < numInstFonts; i++)
 	{
-		size_t distance = levenshtein(name, installedFonts[i].name);
+		size_t distance = levenshtein(name, instFonts[i].name);
 
 		for (size_t j = 0; j < n; j++)
 		{
 			if (distance < minDistance[j])
 			{
-				matches[j] = installedFonts[i].name;
+				matches[j] = instFonts[i].name;
 				minDistance[j] = distance;
 				break;
 			}
