@@ -149,7 +149,7 @@ __declspec(dllexport) void PrintInstalledFonts()
 	//Load installed fonts only once
 	if (instFonts == NULL)
 		if (LoadInstalledFonts() != ERROR_SUCCESS)
-			return NULL;
+			return;
 
 	for (size_t i = 0; i < numInstFonts; i++)
 		wprintf(L"%s (%s)\n", instFonts[i].name, instFonts[i].filename);

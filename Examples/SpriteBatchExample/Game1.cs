@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System;
 
 namespace SimpleMonogameTruetype.Example
 {
@@ -9,7 +10,7 @@ namespace SimpleMonogameTruetype.Example
 		GraphicsDeviceManager graphics;
 		SpriteBatch spriteBatch;
 
-		Font arial;
+		Font font;
 		Texture2D fontTexture;
 
 		public Game1()
@@ -32,10 +33,11 @@ namespace SimpleMonogameTruetype.Example
 			//Load font
 			//  Font can be loaded from a file path (supports .ttf and .otf formats)
 			//  or if it's an installed font, by specifying its name
-			arial = new Font("Arial");
+			font = new Font("Arial");
+			Console.WriteLine("Loaded "+font.Name);
 
 			//Rasterize the font
-			BitmapData data = arial.GenerateBitmapData("Hello, MonoGame!", 64);
+			BitmapData data = font.GenerateBitmapData("Hello, MonoGame!", 64);
 
 			//Create a texture to hold the rendered string
 			//  SurfaceFormat must be Alpha8

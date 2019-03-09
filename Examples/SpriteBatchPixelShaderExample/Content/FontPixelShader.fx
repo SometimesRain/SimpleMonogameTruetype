@@ -22,8 +22,24 @@ struct VertexToFragment
 
 //------------------------------- SHADERS -----------------------------------
 
+float3 ColorFromHue(in float h)
+{
+    float r = abs(h * 6 - 3) - 1;
+    float g = 2 - abs(h * 6 - 2);
+    float b = 2 - abs(h * 6 - 4);
+    return saturate(float3(r, g, b));
+}
+
+float Wrap(in float value)
+{
+	return value - (int)value;
+}
+
 float4 FragmentFont(VertexToFragment input) : COLOR0
 {
+	if (input.Color.a == 0)
+		input.Color.rgb = ColorFromHue(Wrap(input.Color.r + (1 - input.TexCoord.x)));
+	
 	input.Color.a = tex2D(textureSampler, input.TexCoord).a;
 	return input.Color;
 }

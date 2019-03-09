@@ -42,12 +42,12 @@ wchar_t* lastFontName = NULL;
 wchar_t* GetFontName(stbtt_fontinfo* info)
 {
 	int length;
-	unsigned char* fontNameStr = stbtt_GetFontNameString(info, &length, STBTT_PLATFORM_ID_MICROSOFT, STBTT_MS_EID_UNICODE_BMP, STBTT_MS_LANG_ENGLISH, 4);
+	unsigned char* fontNameStr = (unsigned char*)stbtt_GetFontNameString(info, &length, STBTT_PLATFORM_ID_MICROSOFT, STBTT_MS_EID_UNICODE_BMP, STBTT_MS_LANG_ENGLISH, 4);
 
 	//Swap endianness
-	for (int i = 0; i < length / sizeof(wchar_t); i++)
+	for (size_t i = 0; i < length / sizeof(wchar_t); i++)
 	{
-		unsigned char* temp = fontNameStr[i * 2];
+		unsigned char temp = fontNameStr[i * 2];
 		fontNameStr[i * 2] = fontNameStr[i * 2 + 1];
 		fontNameStr[i * 2 + 1] = temp;
 	}

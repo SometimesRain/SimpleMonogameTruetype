@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System;
 
 namespace SimpleMonogameTruetype.Example
 {
@@ -9,7 +10,7 @@ namespace SimpleMonogameTruetype.Example
 		GraphicsDeviceManager graphics;
 		SpriteBatch spriteBatch;
 
-		Font candara;
+		Font font;
 		BitmapData data;
 		string input = "";
 		Texture2D fontTexture;
@@ -57,7 +58,7 @@ namespace SimpleMonogameTruetype.Example
 				return;
 
 			//Rasterize the font at size 48pt
-			data = candara.GenerateBitmapData(input, Font.PointsToPixels(48));
+			data = font.GenerateBitmapData(input, Font.PointsToPixels(48));
 
 			//Create a texture to hold the rendered string
 			//  SurfaceFormat must be Alpha8
@@ -79,7 +80,8 @@ namespace SimpleMonogameTruetype.Example
 			//Load font
 			//  Font can be loaded from a file path (supports .ttf and .otf formats)
 			//  or if it's an installed font, by specifying its name
-			candara = new Font("Candara");
+			font = new Font("Candara");
+			Console.WriteLine("Loaded " + font.Name);
 
 			RenderInstructions();
 			RenderText();
@@ -129,7 +131,7 @@ namespace SimpleMonogameTruetype.Example
 			string instructionString =
 				"Use your keyboard to write something. Press 1 to insert 'Å' character that causes the offset to change.\n"+
 				"The upper display shows proper way of handling offsets, the lower displays what happens when you don't.";
-			BitmapData data = candara.GenerateBitmapData(instructionString, 16);
+			BitmapData data = font.GenerateBitmapData(instructionString, 16);
 
 			instructions = new Texture2D(GraphicsDevice, data.Width, data.Height, false, SurfaceFormat.Alpha8);
 			instructions.SetData(data.Alphas);

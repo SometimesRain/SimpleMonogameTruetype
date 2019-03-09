@@ -22,7 +22,7 @@ namespace SimpleMonogameTruetype.Example
 			"exercise, except to obtain some advantage from it? But who has any right to find fault with a man who chooses " +
 			"to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure?";
 
-		Font arial;
+		Font font;
 		BitmapData data;
 		Texture2D fontTexture;
 
@@ -63,7 +63,7 @@ namespace SimpleMonogameTruetype.Example
 		private void RenderText(int width)
 		{
 			//Rasterize the font at size 12pt
-			data = arial.GenerateBitmapData(englishLoremIpsum, Font.PointsToPixels(12), width - 10);
+			data = font.GenerateBitmapData(englishLoremIpsum, Font.PointsToPixels(12), width - 10);
 
 			//Dispose the old texture
 			if (fontTexture != null)
@@ -93,7 +93,8 @@ namespace SimpleMonogameTruetype.Example
 			//Load font
 			//  Font can be loaded from a file path (supports .ttf and .otf formats)
 			//  or if it's an installed font, by specifying its name
-			arial = new Font("Arial");
+			font = new Font("Arial");
+			Console.WriteLine("Loaded " + font.Name);
 			RenderText(Window.ClientBounds.Width);
 		}
 
