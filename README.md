@@ -1,3 +1,5 @@
+### 2019/07/17: Obsoleted by [MonogameDistanceFont](https://github.com/SometimesRain/MonogameDistanceFont) which uses scalable signed distance fields instead of software rendering. Distance field fonts are more flexible and simpler to use.
+
 ## A dead simple TrueType or OpenType runtime font renderer for MonoGame
 Built on top of the excellent C library [stb_truetype](https://github.com/nothings/stb).
 
